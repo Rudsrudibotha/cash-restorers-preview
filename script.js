@@ -90,6 +90,7 @@ function connectScrollStory(root, reducedMotion, memory) {
   const pending = new Set();
   let disposed = false;
   let frame = null;
+  let previousScrollY = scrollY;
   let revealObserver;
   let sceneObserver;
   let resizeObserver;
@@ -123,16 +124,27 @@ function connectScrollStory(root, reducedMotion, memory) {
     const height = innerHeight;
     // Geometry is read in one batch before any style writes. Only intersecting
     // scenes are measured during scroll; the stable parent drives each image.
-    const positions = [...activeScenes].map(element => [element, element.getBoundingClientRect()]);
+    const jumped = Math.abs(scrollY - previousScrollY) > height;
+    const positions = (jumped ? scenes : [...activeScenes])
+      .map(element => [element, element.getBoundingClientRect()]);
+    // A jump longer than the viewport can skip an unseen target without changing
+    // its intersection state. Inspect pending entrances only on those large jumps.
+    const skippedEntrances = jumped
+      ? [...pending].map(element => [element, element.getBoundingClientRect()])
+      : [];
+    previousScrollY = scrollY;
     for (const [element, rect] of positions) {
-      if (hasSize(rect) && rect.bottom > 0 && rect.top < height) {
+      if (hasSize(rect) && ((rect.bottom > 0 && rect.top < height) || (jumped && rect.bottom <= 0))) {
         paintScene(element, rect, height);
       }
+    }
+    for (const [element, rect] of skippedEntrances) {
+      if (hasSize(rect) && rect.bottom <= 0) reveal(element);
     }
   }
 
   function schedule() {
-    if (!disposed && animate && activeScenes.size && frame === null) {
+    if (!disposed && animate && (activeScenes.size || Math.abs(scrollY - previousScrollY) > innerHeight) && frame === null) {
       frame = requestAnimationFrame(update);
     }
   }
@@ -165,6 +177,10 @@ function connectScrollStory(root, reducedMotion, memory) {
           if (hasSize(rect) && rect.bottom <= 0) {
             memory.progress.set(entry.target, 1);
             entry.target.style.setProperty('--story-progress', '1');
+            // Completing a whole scene also completes its missed entrances.
+            for (const element of [...pending]) {
+              if (entry.target.contains(element)) reveal(element);
+            }
           }
         }
       }
