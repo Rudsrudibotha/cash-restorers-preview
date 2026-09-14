@@ -183,6 +183,7 @@ function connectScrollStory(root, reducedMotion, memory) {
   const height = innerHeight;
   const revealRects = animate ? reveals.map(element => [element, element.getBoundingClientRect()]) : [];
   const sceneRects = animate ? scenes.map(element => [element, element.getBoundingClientRect()]) : [];
+  root.classList.toggle('story-animated', animate);
   if (!animate) {
     reveals.forEach(reveal);
     scenes.forEach(element => {
@@ -211,6 +212,7 @@ function connectScrollStory(root, reducedMotion, memory) {
 
   return () => {
     disposed = true;
+    root.classList.remove('story-animated');
     revealObserver?.disconnect();
     sceneObserver?.disconnect();
     resizeObserver?.disconnect();

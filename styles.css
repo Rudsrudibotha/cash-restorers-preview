@@ -898,3 +898,6 @@ body {
 @media (max-width: 760px) {
   .story-cash .journey-photo-3 { grid-column: 1 / 11; }
 }
+
+/* A connector first shown after a breakpoint change starts independently. */
+.story-animated .mobile-connector { --story-progress: 0; }
